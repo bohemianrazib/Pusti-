@@ -1,0 +1,6 @@
+{
+  "name": "Pushti Tea",
+  "description": "An immersive cinematic interactive tea-making experience that crafts the perfect cup based on your preferences.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
