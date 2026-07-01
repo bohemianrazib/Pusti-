@@ -3,6 +3,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { RefreshCw, CheckCircle, HelpCircle } from 'lucide-react';
 import { audioEngine } from '../lib/audioEngine';
 
+// Dynamically import all uploaded puzzle tiles
+// @ts-ignore
+const imageModules = import.meta.glob('/src/images/1-*.jpg', { eager: true, import: 'default' }) as Record<string, string>;
+
 interface SlidingPuzzleProps {
   onSolve?: () => void;
   isCompletedExternal?: boolean;
@@ -106,13 +110,27 @@ export const SlidingPuzzle: React.FC<SlidingPuzzleProps> = ({ onSolve, isComplet
 
   // Helper to render the beautiful Pushti Tea packet inside tile
   const renderPushtiPacketSubSection = (tileId: number) => {
-    // Determine target col and row for this tileId (solved state)
+    // Construct exact expected image path key (e.g. '/src/images/1-01.jpg')
+    const padNum = (tileId + 1).toString().padStart(2, '0');
+    const imageKey = `/src/images/1-${padNum}.jpg`;
+    const uploadedImageUrl = imageModules[imageKey];
+
+    if (uploadedImageUrl) {
+      return (
+        <div className="absolute inset-0 bg-[#110a06] flex items-center justify-center rounded-xs overflow-hidden">
+          <img 
+            src={uploadedImageUrl} 
+            alt={`Pushti Tile ${padNum}`} 
+            className="w-full h-full object-cover select-none"
+            referrerPolicy="no-referrer"
+          />
+        </div>
+      );
+    }
+
+    // Determine target col and row for this tileId (solved state) for fallback
     const targetCol = tileId % COLS;
     const targetRow = Math.floor(tileId / COLS);
-
-    // Calculate left/top offset percentages
-    const leftPercent = (targetCol / (COLS - 1)) * 100;
-    const topPercent = (targetRow / (ROWS - 1)) * 100;
 
     return (
       <div className="absolute inset-0 overflow-hidden rounded-xs">
@@ -200,17 +218,10 @@ export const SlidingPuzzle: React.FC<SlidingPuzzleProps> = ({ onSolve, isComplet
                   : 'border border-gold-500/15 hover:border-gold-400/40'
               }`}
               style={{
-                aspectRatio: '3/4',
+                aspectRatio: '1/1',
               }}
             >
               {!isEmpty && renderPushtiPacketSubSection(tileId)}
-
-              {/* Number overlay for assistance (optional, subtle) */}
-              {!isEmpty && !isSolved && (
-                <div className="absolute top-1 left-1 bg-black/60 text-white font-mono text-[8px] px-1 py-0.2 rounded-xs">
-                  {tileId + 1}
-                </div>
-              )}
             </div>
           );
         })}
