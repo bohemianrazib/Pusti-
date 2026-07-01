@@ -6,6 +6,7 @@ interface KitchenCanvasProps {
   temperature: number;
   isGasOn: boolean;
   flameLevel: number; // 1 to 5
+  waterLevel?: number;
 }
 
 interface Particle {
@@ -28,6 +29,7 @@ export const KitchenCanvas: React.FC<KitchenCanvasProps> = ({
   temperature,
   isGasOn,
   flameLevel,
+  waterLevel = 1.0,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const particlesRef = useRef<Particle[]>([]);
@@ -35,12 +37,18 @@ export const KitchenCanvas: React.FC<KitchenCanvasProps> = ({
 
   // Keep track of ingredients in refs to avoid restarting canvas loop
   const recipeRef = useRef<RecipeState>(recipe);
+  const waterLevelRef = useRef<number>(waterLevel);
   const prevTeaCountRef = useRef(0);
   const prevMintCountRef = useRef(0);
   const prevSpiceCountRef = useRef(0);
+
   useEffect(() => {
     recipeRef.current = recipe;
   }, [recipe]);
+
+  useEffect(() => {
+    waterLevelRef.current = waterLevel;
+  }, [waterLevel]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -151,9 +159,10 @@ export const KitchenCanvas: React.FC<KitchenCanvasProps> = ({
 
       // 3. WATER COLOR AND INGREDIENT INFLUENCE DYNAMICS
       // Standard water coordinates
-      const waterTopY = kettleY - kettleH * 0.78;
+      const maxWaterTopY = kettleY - kettleH * 0.78;
       const waterBottomY = kettleY - 5;
-      const waterHeight = waterBottomY - waterTopY;
+      const waterHeight = waterBottomY - maxWaterTopY;
+      const waterTopY = waterBottomY - waterHeight * waterLevelRef.current;
       const waterLeftX = kettleX - kettleW / 2 + 5;
       const waterRightX = kettleX + kettleW / 2 - 5;
 
