@@ -691,20 +691,6 @@ export default function App() {
                       </select>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <label className="text-xs text-gray-400 font-medium flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-gold-600" /> রেফারেল কোড (Referral Code - Optional)
-                      </label>
-                      <input
-                        id="login-referral-input"
-                        type="text"
-                        value={loginForm.referral}
-                        onChange={(e) => setLoginForm({ ...loginForm, referral: e.target.value })}
-                        placeholder="PUSHTI-XXXXXX"
-                        className="w-full px-4 py-3 bg-[#150d08]/80 border border-[#3d2b1f]/80 focus:border-[#e5c9a7]/40 rounded-sm text-xs text-parchment outline-none transition-all uppercase"
-                      />
-                    </div>
-
                     <button
                       id="btn-submit-login"
                       type="submit"

@@ -514,14 +514,14 @@ export const InteractiveKitchen: React.FC<InteractiveKitchenProps> = ({ userId, 
                       <input
                         type="range"
                         min="10"
-                        max="60"
+                        max="300"
                         step="5"
                         value={targetTime}
                         onChange={(e) => !isCountingDown && setTargetTime(Number(e.target.value))}
                         disabled={isCountingDown}
                         className="w-full accent-gold-500 cursor-pointer disabled:opacity-55"
                       />
-                      <span className="text-xs font-mono font-bold text-gold-400 w-8 text-right">{targetTime}s</span>
+                      <span className="text-xs font-mono font-bold text-gold-400 w-12 text-right">{formatTime(targetTime)}</span>
                     </div>
                   </div>
                 </div>
@@ -540,7 +540,7 @@ export const InteractiveKitchen: React.FC<InteractiveKitchenProps> = ({ userId, 
                     <div>
                       <span className="text-[9px] text-gray-400 uppercase tracking-wider block">অবশিষ্ট সময়</span>
                       <span className={`text-base font-mono font-black ${isCountingDown ? 'text-green-400 animate-pulse' : 'text-parchment'}`}>
-                        {countdownTime} সেকেন্ড
+                        {formatTime(countdownTime)}
                       </span>
                     </div>
                     <Clock className={`w-4 h-4 ${isCountingDown ? 'text-green-400 animate-spin' : 'text-gray-500'}`} style={{ animationDuration: '4s' }} />

@@ -229,12 +229,24 @@ export const PouringStage: React.FC<PouringStageProps> = ({
       ctx.restore();
 
       // 3. Draw Tilted Kettle pouring
-      ctx.save();
-      ctx.translate(kettleSpoutX - 45, kettleSpoutY + 20);
-      // Tilt animation based on pouring
-      ctx.rotate(-Math.PI * 0.16 * Math.min(1.0, p * 8));
+      const kettleOriginX = kettleSpoutX - 40;
+      const kettleOriginY = kettleSpoutY + 15;
+      const localSpoutX = 35;
+      const localSpoutY = -8;
+      const tiltAngle = Math.PI * 0.18 * Math.min(1.0, p * 8);
 
-      // Draw simplified kettle silhouette in titled state
+      // Rotated local spout offset to find exact world spout tip coordinate
+      const rotSpoutX = localSpoutX * Math.cos(tiltAngle) - localSpoutY * Math.sin(tiltAngle);
+      const rotSpoutY = localSpoutX * Math.sin(tiltAngle) + localSpoutY * Math.cos(tiltAngle);
+      const activeSpoutX = kettleOriginX + rotSpoutX;
+      const activeSpoutY = kettleOriginY + rotSpoutY;
+
+      ctx.save();
+      ctx.translate(kettleOriginX, kettleOriginY);
+      // Tilt animation based on pouring (positive angle to tilt right towards the cup)
+      ctx.rotate(tiltAngle);
+
+      // Draw simplified kettle silhouette in tilted state
       ctx.fillStyle = '#222';
       ctx.strokeStyle = 'rgba(255,255,255,0.25)';
       ctx.lineWidth = 3;
@@ -251,10 +263,12 @@ export const PouringStage: React.FC<PouringStageProps> = ({
       ctx.quadraticCurveTo(-45, 0, -25, 20);
       ctx.stroke();
 
-      // Kettle liquid inside (blended transparently)
+      // Kettle liquid inside (blended transparently) - decreases as tea pours out
       ctx.fillStyle = teaColor.cssColor;
       ctx.beginPath();
-      ctx.rect(-20, 0, 40, 35);
+      const liquidHeight = Math.max(0, 35 * (1 - p));
+      const liquidY = 35 * p;
+      ctx.rect(-20, liquidY, 40, liquidHeight);
       ctx.fill();
 
       // Spout
@@ -269,7 +283,7 @@ export const PouringStage: React.FC<PouringStageProps> = ({
 
       ctx.restore();
 
-      // 4. Draw Stream of Tea Liquid from Kettle to Cup
+      // 4. Draw Stream of Tea Liquid from Kettle to Cup (originates from dynamic activeSpout coordinate)
       if (p < 0.99) {
         streamPulse += 0.15;
         const streamW = 4 + Math.sin(streamPulse) * 1.2;
@@ -278,11 +292,11 @@ export const PouringStage: React.FC<PouringStageProps> = ({
         ctx.lineWidth = streamW;
         ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.moveTo(kettleSpoutX, kettleSpoutY);
+        ctx.moveTo(activeSpoutX, activeSpoutY);
         // Beautiful curve into cup center
         ctx.quadraticCurveTo(
-          kettleSpoutX + (cupCenterX - kettleSpoutX) * 0.45,
-          kettleSpoutY + (cupCenterY - kettleSpoutY) * 0.2,
+          activeSpoutX + (cupCenterX - activeSpoutX) * 0.45,
+          activeSpoutY + (cupCenterY - activeSpoutY) * 0.2,
           cupCenterX,
           cupCenterY - fillHeight
         );
@@ -292,10 +306,10 @@ export const PouringStage: React.FC<PouringStageProps> = ({
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
         ctx.lineWidth = streamW * 0.35;
         ctx.beginPath();
-        ctx.moveTo(kettleSpoutX, kettleSpoutY);
+        ctx.moveTo(activeSpoutX, activeSpoutY);
         ctx.quadraticCurveTo(
-          kettleSpoutX + (cupCenterX - kettleSpoutX) * 0.45,
-          kettleSpoutY + (cupCenterY - kettleSpoutY) * 0.2,
+          activeSpoutX + (cupCenterX - activeSpoutX) * 0.45,
+          activeSpoutY + (cupCenterY - activeSpoutY) * 0.2,
           cupCenterX,
           cupCenterY - fillHeight
         );
