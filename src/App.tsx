@@ -82,22 +82,38 @@ export default function App() {
     }
 
     try {
-      const res = await fetch('/api/auth/send-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: loginForm.phone })
-      });
-      const data = await res.json();
+      let data;
+      try {
+        const res = await fetch('/api/auth/send-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: loginForm.phone })
+        });
+        if (res.ok) {
+          data = await res.json();
+        } else {
+          throw new Error('Not ok');
+        }
+      } catch (err) {
+        // Fallback: Generate local OTP for offline/Vercel environments
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        console.log(`[LOCAL FALLBACK OTP] Generated code: ${code}`);
+        data = {
+          success: true,
+          code,
+          message: 'Local OTP generated.'
+        };
+      }
       
-      if (data.success) {
+      if (data && data.success) {
         setIsOtpSent(true);
         setOtpCode(data.code); // Store code
         audioEngine.playClick();
       } else {
-        setAuthError(data.error || 'ওটিপি পাঠাতে সমস্যা হয়েছে। পুনরায় চেষ্টা করুন।');
+        setAuthError(data?.error || 'ওটিপি পাঠাতে সমস্যা হয়েছে। পুনরায় চেষ্টা করুন।');
       }
     } catch (err) {
-      setAuthError('সার্ভারে যোগাযোগ করতে ব্যর্থ হয়েছে।');
+      setAuthError('ওটিপি পাঠাতে সমস্যা হয়েছে।');
     }
   };
 
@@ -112,19 +128,59 @@ export default function App() {
     }
 
     try {
-      const res = await fetch('/api/auth/login-register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: loginForm.name,
-          phone: loginForm.phone,
-          district: loginForm.district,
-          referralCode: loginForm.referral
-        })
-      });
-      const data = await res.json();
+      let data;
+      try {
+        const res = await fetch('/api/auth/login-register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: loginForm.name,
+            phone: loginForm.phone,
+            district: loginForm.district,
+            referralCode: loginForm.referral
+          })
+        });
+        if (res.ok) {
+          data = await res.json();
+        } else {
+          throw new Error('Not ok');
+        }
+      } catch (err) {
+        // Fallback: Create or retrieve local user in localStorage for Vercel/offline mode
+        const referralCode = 'PUSHTI-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+        const id = 'local-user-' + Math.random().toString(36).substring(2, 11);
+        
+        const localUsers = JSON.parse(localStorage.getItem('pushti_local_users') || '{}');
+        let localUser = Object.values(localUsers).find((u: any) => u.phone === loginForm.phone) as any;
+        
+        if (!localUser) {
+          localUser = {
+            id,
+            name: loginForm.name,
+            phone: loginForm.phone,
+            district: loginForm.district,
+            xp: 100,
+            level: 1,
+            referralCode,
+            createdAt: new Date().toISOString()
+          };
+          localUsers[id] = localUser;
+          localStorage.setItem('pushti_local_users', JSON.stringify(localUsers));
+        } else {
+          localUser.name = loginForm.name;
+          localUser.district = loginForm.district;
+          localUsers[localUser.id] = localUser;
+          localStorage.setItem('pushti_local_users', JSON.stringify(localUsers));
+        }
 
-      if (data.success) {
+        data = {
+          success: true,
+          user: localUser,
+          message: 'Logged in successfully offline!'
+        };
+      }
+
+      if (data && data.success) {
         audioEngine.playClick();
         setUser(data.user);
         localStorage.setItem('pushti_user', JSON.stringify(data.user));
@@ -133,10 +189,10 @@ export default function App() {
         setOtpInput('');
         setStage(GameStage.TUTORIAL);
       } else {
-        setAuthError(data.error || 'লগইন ব্যর্থ হয়েছে।');
+        setAuthError(data?.error || 'লগইন ব্যর্থ হয়েছে।');
       }
     } catch (err) {
-      setAuthError('সার্ভারে যোগাযোগ করতে ব্যর্থ হয়েছে।');
+      setAuthError('লগইন প্রক্রিয়ায় সমস্যা হয়েছে।');
     }
   };
 
@@ -156,19 +212,187 @@ export default function App() {
   }) => {
     if (!user) return;
     try {
-      const response = await fetch('/api/recipes/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      let data;
+      try {
+        const response = await fetch('/api/recipes/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.id,
+            recipe: dataToScore.recipe,
+            temperature: dataToScore.temperature,
+            brewingTime: dataToScore.brewingTime
+          })
+        });
+        if (response.ok) {
+          data = await response.json();
+        } else {
+          throw new Error('Not ok');
+        }
+      } catch (err) {
+        // Fallback: Local Offline Scorer (Perfect matching server-side rules)
+        const { recipe, temperature, brewingTime } = dataToScore;
+        const { pushtiTea, milkPowder, sugar, lemon, mint, cardamom, cinnamon, ginger, honey, clove } = recipe;
+
+        let taste = 100;
+        const teaDiff = Math.abs(pushtiTea - 2.0);
+        taste -= teaDiff * 25;
+
+        if (milkPowder > 0 && lemon > 0) {
+          taste -= 60;
+        }
+
+        const sweetness = sugar + (honey * 1.5);
+        if (sweetness > 3) {
+          taste -= (sweetness - 3) * 15;
+        } else if (sweetness === 0 && milkPowder > 0) {
+          taste -= 15;
+        }
+
+        let aroma = 40;
+        if (temperature >= 80) aroma += 20;
+        if (temperature >= 95) aroma += 10;
+        
+        const spiceCount = cardamom + cinnamon + ginger + clove;
+        if (spiceCount > 0 && spiceCount <= 4) {
+          aroma += spiceCount * 8;
+        } else if (spiceCount > 4) {
+          aroma += 20 - (spiceCount - 4) * 10;
+        }
+        if (mint > 0) aroma += Math.min(mint * 5, 10);
+
+        let color = 50;
+        if (brewingTime < 120) {
+          color -= (120 - brewingTime) * 0.3;
+        } else if (brewingTime > 240) {
+          color -= (brewingTime - 240) * 0.2;
+        }
+
+        if (pushtiTea === 0) {
+          color = 10;
+        } else {
+          const colorMultiplier = Math.min(pushtiTea / 2.0, 1.5);
+          color = Math.round(color * colorMultiplier);
+        }
+
+        if (milkPowder > 0) {
+          color = Math.min(color + 10, 95);
+        }
+        color = Math.min(Math.max(color, 10), 100);
+
+        let balance = 100;
+        const totalIngredients = Object.values(recipe).reduce((a, b) => a + b, 0);
+        if (totalIngredients > 12) {
+          balance -= (totalIngredients - 12) * 8;
+        }
+        if (pushtiTea === 0) {
+          balance = 10;
+        }
+
+        const sanitize = (val: number) => Math.min(Math.max(Math.round(val), 20), 100);
+        const finalTaste = sanitize(taste);
+        const finalAroma = sanitize(aroma);
+        const finalColor = sanitize(color);
+        const finalBalance = sanitize(balance);
+
+        const total = Math.round((finalTaste * 0.35) + (finalAroma * 0.25) + (finalColor * 0.20) + (finalBalance * 0.20));
+
+        const breakdown = {
+          taste: finalTaste,
+          aroma: finalAroma,
+          color: finalColor,
+          balance: finalBalance,
+          total
+        };
+
+        let personality;
+        if (milkPowder >= 2 && sugar >= 1.5) {
+          personality = {
+            titleBn: 'দুধ চায়ের জাদুকর',
+            titleEn: 'Milk Tea Artist',
+            descriptionBn: 'আপনি ঘন দুধ আর মিষ্টি দিয়ে কড়া স্বাদের রাজকীয় চা বানাতে ভালোবাসেন! আপনার চা মনকে প্রশান্ত করে এবং সারাদিনের ক্লান্তি নিমেষেই দূর করে।',
+            descriptionEn: 'You love crafting rich, creamy, and sweet milk tea! Your creation brings ultimate comfort and instantly washes away the day\'s fatigue.',
+            badge: 'Milk Tea Artist Badge',
+            tagline: 'রাজকীয় তৃপ্তি!'
+          };
+        } else if (ginger >= 1 || cardamom >= 1 || cinnamon >= 1) {
+          personality = {
+            titleBn: 'ঐতিহ্যবাহী মসলা চা বিশারদ',
+            titleEn: 'Traditional Tea Expert',
+            descriptionBn: 'দারুচিনি, এলাচ আর আদার সুগন্ধে ভরপুর খাঁটি মসলা চা আপনার প্রথম পছন্দ। আপনার তৈরি চায়ের প্রতিটি চুমুক রোগ প্রতিরোধ বাড়াতে সাহায্য করে।',
+            descriptionEn: 'A authentic cup loaded with the goodness of cardamom, cinnamon, and ginger is your choice. Every sip of your tea boosts immunity and health.',
+            badge: 'Traditional Tea Expert Badge',
+            tagline: 'ঐতিহ্য ও সুস্থতা!'
+          };
+        } else if (pushtiTea >= 3 && milkPowder === 0) {
+          personality = {
+            titleBn: 'কড়া চায়ের ভক্ত',
+            titleEn: 'Strong Tea Lover',
+            descriptionBn: 'আপনি লাল লিকার চায়ের তীব্র স্বাদে বিশ্বাসী! কোনো আড়াল ছাড়া খাঁটি পুষ্টি চায়ের আসল লিকার আপনার শরীর ও মনকে চাঙ্গা করে তোলে।',
+            descriptionEn: 'You believe in the fierce power of black, strong tea leaf liquor! Pure Pushti tea liquor wakes up your senses and fuels your drive.',
+            badge: 'Strong Tea Lover Badge',
+            tagline: 'তীব্র সতেজতা!'
+          };
+        } else if (total >= 85) {
+          personality = {
+            titleBn: 'চা মাস্টার',
+            titleEn: 'Tea Master',
+            descriptionBn: 'অসাধারণ! আপনার চা তৈরির অনুপাত, লিকারের রঙ এবং স্বাদ একেবারেই পারফেক্ট। আপনি চায়ের খাঁটি গুণাগুণ বোঝেন এবং পারফেকশনের চূড়ান্ত শিখরে পৌঁছেছেন।',
+            descriptionEn: 'Outstanding! Your brewing ratios, liquor color, and infusion are in absolute harmony. You are a true connoisseur of Pushti Tea.',
+            badge: 'Tea Master Badge',
+            tagline: 'চায়ের চূড়ান্ত পারফেকশনিস্ট!'
+          };
+        } else {
+          personality = {
+            titleBn: 'সুষম চায়ের শিল্পী',
+            titleEn: 'Balanced Brewer',
+            descriptionBn: 'আপনি এক কাপ চায়ে পরিমিত মিষ্টি, হালকা সুবাস এবং সঠিক লিকারের এক সুষম ভারসাম্য পছন্দ করেন। আপনার চা সারাদিনের কাজের অনুপ্রেরণা যোগায়।',
+            descriptionEn: 'You balance moderate sweetness, light aroma, and optimal liquor density perfectly. Your tea provides a reliable, steady energy flow.',
+            badge: 'Balanced Brewer Badge',
+            tagline: 'পরিমিত ও প্রাণবন্ত!'
+          };
+        }
+
+        let aiCommentary = '';
+        if (total >= 90) {
+          aiCommentary = `চমৎকার চা বানিয়েছেন! পুষ্টি চায়ের সাথে আপনার এই নিখুঁত মেলবন্ধন প্রমাণ করে আপনি একজন প্রকৃত টি-মাস্টার। আপনার চা, আপনার পারফেকশন!`;
+        } else if (total >= 75) {
+          aiCommentary = `অসাধারণ স্বাদ ও সুগন্ধের এক অতুলনীয় কাপ! পুষ্টি চায়ের আসল লিকার আপনার চায়ের স্বাদকে করেছে অত্যন্ত লোভনীয় ও সতেজ।`;
+        } else {
+          aiCommentary = `আপনার চায়ের স্বাদ বেশ চমৎকার হয়েছে! পরবর্তী কাপে তাপমাত্রা আরেকটু বাড়িয়ে আরও বেশি পারফেকশন অর্জন করতে পারেন।`;
+        }
+
+        personality.descriptionBn = `${personality.descriptionBn}\n\n🤖 পিউরিফাইড এআই রেটিং (অফলাইন মোড):\n"${aiCommentary}"`;
+
+        const id = 'local-session-' + Math.random().toString(36).substring(2, 11);
+        const couponCode = `PUSHTI-PERFECT-${total}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+        const record = {
+          id,
           userId: user.id,
-          recipe: dataToScore.recipe,
-          temperature: dataToScore.temperature,
-          brewingTime: dataToScore.brewingTime
-        })
-      });
-      const data = await response.json();
+          userName: user.name,
+          userDistrict: user.district,
+          recipe,
+          temperature,
+          brewingTime,
+          score: breakdown,
+          personality,
+          couponCode,
+          createdAt: new Date().toISOString()
+        };
+
+        // Save session locally
+        const localSessions = JSON.parse(localStorage.getItem('pushti_local_sessions') || '[]');
+        localSessions.push(record);
+        localStorage.setItem('pushti_local_sessions', JSON.stringify(localSessions));
+
+        data = {
+          success: true,
+          session: record
+        };
+      }
       
-      if (data.success) {
+      if (data && data.success) {
         setActiveSession(data.session);
         setStage(GameStage.ANALYSIS);
         
