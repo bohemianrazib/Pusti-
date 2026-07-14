@@ -131,14 +131,17 @@ class FileDatabase {
     temperature: number,
     brewingTime: number,
     score: ScoreBreakdown,
-    personality: TeaPersonality
+    personality: TeaPersonality,
+    discount?: number
   ): SessionRecord {
     const user = this.db.users[userId];
     const userName = user ? user.name : 'Guest';
     const userDistrict = user ? user.district : 'Dhaka';
 
     const id = 'session-' + Math.random().toString(36).substring(2, 11);
-    const couponCode = `PUSHTI-PERFECT-${score.total}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    const sanitizedName = userName.toUpperCase().replace(/[^A-Z0-9]/g, '') || 'PERFECT';
+    const finalDiscount = discount || 5;
+    const couponCode = `PUSHTI-${sanitizedName}-${finalDiscount}PERCENT-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
     const record: SessionRecord = {
       id,
@@ -151,6 +154,7 @@ class FileDatabase {
       score,
       personality,
       couponCode,
+      discount: finalDiscount,
       createdAt: new Date().toISOString()
     };
 

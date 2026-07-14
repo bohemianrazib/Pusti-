@@ -56,6 +56,7 @@ export default function App() {
     recipe: RecipeState;
     temperature: number;
     brewingTime: number;
+    discount?: number;
   } | null>(null);
 
   // Check persistent login on startup
@@ -209,6 +210,7 @@ export default function App() {
     recipe: RecipeState;
     temperature: number;
     brewingTime: number;
+    discount?: number;
   }) => {
     if (!user) return;
     try {
@@ -221,7 +223,8 @@ export default function App() {
             userId: user.id,
             recipe: dataToScore.recipe,
             temperature: dataToScore.temperature,
-            brewingTime: dataToScore.brewingTime
+            brewingTime: dataToScore.brewingTime,
+            discount: dataToScore.discount
           })
         });
         if (response.ok) {
@@ -231,7 +234,7 @@ export default function App() {
         }
       } catch (err) {
         // Fallback: Local Offline Scorer (Perfect matching server-side rules)
-        const { recipe, temperature, brewingTime } = dataToScore;
+        const { recipe, temperature, brewingTime, discount } = dataToScore;
         const { pushtiTea, milkPowder, sugar, lemon, mint, cardamom, cinnamon, ginger, honey, clove } = recipe;
 
         let taste = 100;
@@ -365,7 +368,9 @@ export default function App() {
         personality.descriptionBn = `${personality.descriptionBn}\n\n🤖 পিউরিফাইড এআই রেটিং (অফলাইন মোড):\n"${aiCommentary}"`;
 
         const id = 'local-session-' + Math.random().toString(36).substring(2, 11);
-        const couponCode = `PUSHTI-PERFECT-${total}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+        const sanitizedName = user.name.toUpperCase().replace(/[^A-Z0-9]/g, '') || 'PERFECT';
+        const finalDiscount = discount || 5;
+        const couponCode = `PUSHTI-${sanitizedName}-${finalDiscount}PERCENT-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
         const record = {
           id,
@@ -378,6 +383,7 @@ export default function App() {
           score: breakdown,
           personality,
           couponCode,
+          discount: finalDiscount,
           createdAt: new Date().toISOString()
         };
 
@@ -416,6 +422,7 @@ export default function App() {
     recipe: RecipeState;
     temperature: number;
     brewingTime: number;
+    discount?: number;
   }) => {
     setBrewedData(data);
     setStage(GameStage.BREWING);

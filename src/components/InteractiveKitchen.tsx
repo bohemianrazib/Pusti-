@@ -5,7 +5,7 @@ import { KitchenCanvas } from './KitchenCanvas';
 import { INGREDIENTS } from '../ingredientsData';
 import { RecipeState } from '../types';
 import { audioEngine } from '../lib/audioEngine';
-import { SlidingPuzzle } from './SlidingPuzzle';
+import { WheelOfFortune } from './WheelOfFortune';
 
 interface InteractiveKitchenProps {
   userId: string;
@@ -13,6 +13,7 @@ interface InteractiveKitchenProps {
     recipe: RecipeState;
     temperature: number;
     brewingTime: number;
+    discount: number;
   }) => void;
 }
 
@@ -41,8 +42,8 @@ export const InteractiveKitchen: React.FC<InteractiveKitchenProps> = ({ userId, 
 
   // Stove Target Controls
   const [targetTemp, setTargetTemp] = useState<number>(100); // target temperature (80 to 100)
-  const [targetTime, setTargetTime] = useState<number>(20); // target time (10 to 60)
-  const [countdownTime, setCountdownTime] = useState<number>(20); // ticks down to 0
+  const [targetTime, setTargetTime] = useState<number>(60); // target time fixed to 60s (1 min)
+  const [countdownTime, setCountdownTime] = useState<number>(60); // ticks down to 0
   const [isCountingDown, setIsCountingDown] = useState<boolean>(false);
 
   // Gas and Stove Physics State
@@ -52,8 +53,9 @@ export const InteractiveKitchen: React.FC<InteractiveKitchenProps> = ({ userId, 
   const [brewingTime, setBrewingTime] = useState(0); // in seconds
   const [isBrewingStarted, setIsBrewingStarted] = useState(false);
 
-  // Sliding Puzzle state
-  const [isPuzzleOpen, setIsPuzzleOpen] = useState<boolean>(false);
+  // Wheel of Fortune states
+  const [isWheelOpen, setIsWheelOpen] = useState<boolean>(true);
+  const [highestDiscount, setHighestDiscount] = useState<number>(0);
 
   // Sound timers and interval refs
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -95,11 +97,11 @@ export const InteractiveKitchen: React.FC<InteractiveKitchenProps> = ({ userId, 
     };
   }, [isGasOn, flameLevel]);
 
-  // COUNTDOWN TICKER EFFECT (Ticks only when gas is on and temperature is hot enough)
+  // COUNTDOWN TICKER EFFECT (Ticks as soon as gas is turned on)
   useEffect(() => {
     let countdownInterval: NodeJS.Timeout | null = null;
 
-    if (isGasOn && temperature >= targetTemp && countdownTime > 0) {
+    if (isGasOn && countdownTime > 0) {
       setIsCountingDown(true);
       setIsBrewingStarted(true);
 
@@ -109,7 +111,7 @@ export const InteractiveKitchen: React.FC<InteractiveKitchenProps> = ({ userId, 
             // Countdown complete! Turn off stove and advance step
             setIsGasOn(false);
             setIsCountingDown(false);
-            setIsPuzzleOpen(false); // Auto-close puzzle on completion
+            setIsWheelOpen(false); // Auto-close wheel on completion
             setActiveStep('done');
             audioEngine.stopAll();
             audioEngine.playSpoonClink(); // Success chime
@@ -128,7 +130,7 @@ export const InteractiveKitchen: React.FC<InteractiveKitchenProps> = ({ userId, 
     return () => {
       if (countdownInterval) clearInterval(countdownInterval);
     };
-  }, [isGasOn, temperature, targetTemp, countdownTime]);
+  }, [isGasOn, countdownTime]);
 
   // Clean up sounds when leaving kitchen
   useEffect(() => {
@@ -206,6 +208,7 @@ export const InteractiveKitchen: React.FC<InteractiveKitchenProps> = ({ userId, 
       recipe,
       temperature,
       brewingTime,
+      discount: highestDiscount,
     });
   };
 
@@ -508,20 +511,11 @@ export const InteractiveKitchen: React.FC<InteractiveKitchenProps> = ({ userId, 
                     </div>
                   </div>
 
-                  <div className="bg-[#150d08] border border-[#3d2b1f]/60 p-3 rounded-md">
-                    <label className="text-[10px] text-gray-400 block mb-1">রান্নার সময় (সেকেন্ড)</label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="range"
-                        min="10"
-                        max="300"
-                        step="5"
-                        value={targetTime}
-                        onChange={(e) => !isCountingDown && setTargetTime(Number(e.target.value))}
-                        disabled={isCountingDown}
-                        className="w-full accent-gold-500 cursor-pointer disabled:opacity-55"
-                      />
-                      <span className="text-xs font-mono font-bold text-gold-400 w-12 text-right">{formatTime(targetTime)}</span>
+                  <div className="bg-[#150d08] border border-[#3d2b1f]/60 p-3 rounded-md flex flex-col justify-center">
+                    <label className="text-[10px] text-gray-400 block mb-1">রান্নার সময় (ফিক্সড)</label>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-gold-400 font-mono">৬০ সেকেন্ড (১ মিনিট)</span>
+                      <span className="text-xs font-mono font-bold text-gold-500">01:00</span>
                     </div>
                   </div>
                 </div>
@@ -586,32 +580,31 @@ export const InteractiveKitchen: React.FC<InteractiveKitchenProps> = ({ userId, 
                   </div>
                 </div>
 
-                {/* SLIDING PUZZLE OPTION FOR USERS DURING COUNTDOWN */}
+                {/* WHEEL OF FORTUNE MINI-GAME */}
                 {isGasOn && (
                   <div className="bg-gradient-to-r from-amber-500/10 to-gold-500/5 border border-gold-500/20 p-3 rounded-md space-y-2.5">
                     <div className="flex justify-between items-center">
                       <div className="space-y-0.5">
-                        <span className="text-[11px] font-bold text-gold-400 block">🧩 সময় কাটানোর মিনি-গেম!</span>
-                        <span className="text-[9px] text-gray-400 block">চা ফোটা পর্যন্ত পুষ্টি চায়ের স্লাইড পাজেলটি মেলান।</span>
+                        <span className="text-[11px] font-bold text-gold-400 block">🎡 ভাগ্যের চাকা (Wheel of Fortune)!</span>
+                        <span className="text-[9px] text-gray-400 block">১ মিনিটের মধ্যে যতবার খুশি চাকা ঘুরিয়ে আকর্ষণীয় ডিসকাউন্ট কুপন জিতুন!</span>
                       </div>
                       <button
                         onClick={() => {
                           audioEngine.playClick();
-                          setIsPuzzleOpen(!isPuzzleOpen);
+                          setIsWheelOpen(!isWheelOpen);
                         }}
                         className={`px-3 py-1.5 rounded-sm text-[10px] font-mono font-extrabold transition-all ${
-                          isPuzzleOpen
+                          isWheelOpen
                             ? 'bg-red-500/15 text-red-400 border border-red-500/20'
                             : 'bg-gold-500/20 text-gold-400 border border-gold-500/30'
                         }`}
                       >
-                        {isPuzzleOpen ? 'পাজেল বন্ধ করুন' : 'পাজেল মেলান 🧩'}
+                        {isWheelOpen ? 'চাকা বন্ধ করুন' : 'ভাগ্যের চাকা 🎡'}
                       </button>
                     </div>
 
-                    {/* Integrated sliding puzzle container */}
                     <AnimatePresence>
-                      {isPuzzleOpen && (
+                      {isWheelOpen && (
                         <motion.div
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
@@ -619,7 +612,14 @@ export const InteractiveKitchen: React.FC<InteractiveKitchenProps> = ({ userId, 
                           className="overflow-hidden"
                         >
                           <div className="pt-2">
-                            <SlidingPuzzle />
+                            <WheelOfFortune
+                              isStoveActive={isCountingDown}
+                              timeLeft={countdownTime}
+                              currentMaxDiscount={highestDiscount}
+                              onSpinResult={(discountVal) => {
+                                setHighestDiscount((prev) => Math.max(prev, discountVal));
+                              }}
+                            />
                           </div>
                         </motion.div>
                       )}

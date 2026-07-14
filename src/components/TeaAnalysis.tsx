@@ -185,6 +185,17 @@ export const TeaAnalysis: React.FC<TeaAnalysisProps> = ({ session, onReplay, onG
               Exclusive Reward
             </div>
             
+            {session.discount && (
+              <div className="mb-3.5 mt-2 flex flex-col items-center">
+                <div className="text-3xl font-mono font-black text-gold-400 tracking-tight leading-none flex items-center gap-1">
+                  {session.discount}% ছাড়! 🏷️
+                </div>
+                <div className="text-[9px] text-gray-400 uppercase tracking-widest font-mono mt-1">
+                  Wheel of Fortune Reward
+                </div>
+              </div>
+            )}
+
             <div className="text-xs text-gold-400 font-sans mt-1">অভিনন্দন! আপনি একটি গিফট কুপন পেয়েছেন:</div>
             
             <div className="my-4 bg-[#150d08]/80 border border-[#e5c9a7]/20 py-3 px-4 rounded-md flex items-center justify-between gap-3 font-mono font-bold text-sm text-gold-400 select-all">

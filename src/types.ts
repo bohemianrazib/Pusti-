@@ -83,6 +83,7 @@ export interface SessionRecord {
   score: ScoreBreakdown;
   personality: TeaPersonality;
   couponCode: string;
+  discount?: number;
   createdAt: string;
 }
 

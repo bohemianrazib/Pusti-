@@ -78,11 +78,12 @@ app.post('/api/auth/send-otp', (req, res) => {
 
 // 4. Recipe Analyzer & AI Scorer
 app.post('/api/recipes/analyze', async (req, res) => {
-  const { userId, recipe, temperature, brewingTime } = req.body as {
+  const { userId, recipe, temperature, brewingTime, discount } = req.body as {
     userId: string;
     recipe: RecipeState;
     temperature: number;
     brewingTime: number;
+    discount?: number;
   };
 
   if (!userId || !recipe) {
@@ -277,7 +278,7 @@ Return only the raw Bengali text. Do not add any conversational English or markd
     personality.descriptionBn = `${personality.descriptionBn}\n\n🤖 পিউরিফাইড এআই রেটিং:\n"${aiCommentary}"`;
 
     // Save session details to the file database
-    const sessionRecord = db.addSession(userId, recipe, temperature, brewingTime, breakdown, personality);
+    const sessionRecord = db.addSession(userId, recipe, temperature, brewingTime, breakdown, personality, discount);
 
     res.json({
       success: true,
